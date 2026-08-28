@@ -7,8 +7,9 @@ Entrega interactiva basada en la pregunta analítica de las sesiones 1 y 2 del m
 ## Qué incluye
 
 - Tablero de capacidad, carga, cumplimiento y brechas por zona.
-- Simulador de `WorkOrder` y `ServiceAppointment`, técnico asignado y ciclo de estados.
-- Representación de la carga incremental a `HIST_FFS_CAPACIDAD` en Oracle SQL.
+- Simulador de `WorkOrder` 1:N `ServiceAppointment` y `ServiceAppointment` N:M técnico mediante `AssignedResource`.
+- Modelo Oracle con históricos separados, tabla puente cita–técnico y hecho técnico–día para evitar doble conteo.
+- Simulador de capacidad que contrasta minutos disponibles, carga comprometida, desplazamiento y nueva orden antes de asignarla.
 - Flujo interactivo Salesforce → EventBridge/Step Functions → S3 → Glue → Athena → Oracle → tablero.
 - Controles de calidad, seguridad, linaje, retención, definiciones y observabilidad.
 - Aplicación de PMBOK 7, Scrum, CRISP-DM y DataOps.
@@ -37,9 +38,10 @@ npm test
 4. Directorio de publicación: `dist`.
 5. No se requieren variables de entorno.
 
-## Documento para la exposición
+## Documentos para la exposición
 
-La guía completa para preparar y grabar el video se encuentra en [`PRESENTACION_FINAL.md`](./PRESENTACION_FINAL.md).
+- [`RESUMEN.md`](./RESUMEN.md): guía de estudio rápida antes de grabar, con frases clave y posibles preguntas.
+- [`PRESENTACION_FINAL.md`](./PRESENTACION_FINAL.md): guion completo para preparar y grabar el video.
 
 ## Referencias visuales de la simulación
 

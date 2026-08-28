@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import {
-  Activity, ArrowDownRight, ArrowRight, ArrowUpRight, Box, Check, CheckCircle2,
+  Activity, ArrowDownRight, ArrowRight, ArrowUpRight, Box, CalendarDays, Check, CheckCircle2,
   ChevronDown, ChevronRight, Clock3, Cloud, Code2, Database,
   FileCheck2, Gauge, GitBranch, HardDrive, KeyRound, Layers3, LockKeyhole, ChartNoAxesCombined,
   Menu, Network, Play, RefreshCw, Route, Search, ShieldCheck,
@@ -12,8 +12,8 @@ import {
 } from 'recharts'
 import {
   analyticalQuestion, appointmentStatuses, frameworks, governanceDomains,
-  operationalData, oracleColumns, pipeline, projectStages, repairTypes,
-  weekly, workOrders,
+  operationalData, oracleColumns, oracleTables, pipeline, projectStages, repairTypes,
+  technicianCapacity, weekly, workOrders,
 } from './data'
 
 const formatNumber = new Intl.NumberFormat('es-CO')
@@ -26,6 +26,7 @@ function App() {
   const [activeSection, setActiveSection] = useState('panorama')
   const [menuOpen, setMenuOpen] = useState(false)
   const [selectedOrder, setSelectedOrder] = useState(workOrders[0].id)
+  const [selectedAppointment, setSelectedAppointment] = useState(workOrders[0].appointments[1].id)
   const [statusOverrides, setStatusOverrides] = useState({})
   const [objectTab, setObjectTab] = useState('appointment')
   const [pipelineStep, setPipelineStep] = useState(-1)
@@ -48,7 +49,10 @@ function App() {
   })), [filtered])
 
   const currentOrder = workOrders.find((item) => item.id === selectedOrder)
-  const currentStatus = statusOverrides[currentOrder.id] ?? currentOrder.status
+  const currentAppointment = currentOrder.appointments.find((item) => item.id === selectedAppointment) ?? currentOrder.appointments[0]
+  const currentTechnician = currentAppointment.technicians[0]
+  const currentStatus = statusOverrides[currentAppointment.id] ?? currentAppointment.status
+  const orderTechnicians = [...new Map(currentOrder.appointments.flatMap((appointment) => appointment.technicians).map((technician) => [technician.name, technician])).values()]
   const pipelineDetail = pipeline.find((item) => item.id === selectedPipeline)
   const governanceDetail = governanceDomains.find((item) => item.id === selectedGovernance)
   const frameworkDetail = frameworks.find((item) => item.id === selectedFramework)
@@ -59,8 +63,13 @@ function App() {
     document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' })
   }
 
+  const selectOrder = (order) => {
+    setSelectedOrder(order.id)
+    setSelectedAppointment(order.appointments[order.appointments.length - 1].id)
+  }
+
   const advanceAppointment = () => {
-    setStatusOverrides((current) => ({ ...current, [currentOrder.id]: Math.min(currentStatus + 1, appointmentStatuses.length - 1) }))
+    setStatusOverrides((current) => ({ ...current, [currentAppointment.id]: Math.min(currentStatus + 1, appointmentStatuses.length - 1) }))
   }
 
   const runPipeline = async () => {
@@ -80,7 +89,7 @@ function App() {
       <header className="topbar">
         <button className="brand" onClick={() => scrollTo('panorama')} aria-label="Ir al inicio"><span className="brand-mark"><Activity /></span><span>NODO</span><small>FIELD ANALYTICS</small></button>
         <nav className={menuOpen ? 'main-nav open' : 'main-nav'} aria-label="Navegación principal">
-          {[['panorama', 'Panorama'], ['operacion', 'Operación'], ['arquitectura', 'Arquitectura'], ['gobernanza', 'Gobernanza'], ['marcos', 'Marcos'], ['avance', 'Avance']].map(([id, label]) => <button key={id} className={activeSection === id ? 'active' : ''} onClick={() => scrollTo(id)}>{label}</button>)}
+          {[['panorama', 'Panorama'], ['marcos', 'Marcos'], ['operacion', 'Operación'], ['arquitectura', 'Arquitectura'], ['gobernanza', 'Gobernanza'], ['avance', 'Avance']].map(([id, label]) => <button key={id} className={activeSection === id ? 'active' : ''} onClick={() => scrollTo(id)}>{label}</button>)}
         </nav>
         <button className="header-status" onClick={() => scrollTo('avance')}><span /> Proyecto 68%</button>
         <button className="menu-button" onClick={() => setMenuOpen(!menuOpen)} aria-label="Abrir menú"><Menu /></button>
@@ -90,9 +99,10 @@ function App() {
         <section className="hero section" id="panorama">
           <div className="eyebrow"><span className="live-dot" /> PROTOTIPO ANALÍTICO · ARQUITECTURA PROPUESTA · DATOS DEMOSTRATIVOS</div>
           <div className="hero-grid">
-            <div><h1>Del trabajo en campo<br /><em>al dato gobernado.</em></h1><p className="hero-lead">Una experiencia interactiva que conecta Salesforce Field Service, servicios analíticos de AWS y un histórico corporativo en Oracle para explicar la capacidad de técnicos de red externa.</p></div>
+            <div><h1>Gestionar el proyecto.<br /><em>Gobernar el dato.</em></h1><p className="hero-lead">PMBOK 7, Scrum, CRISP-DM y DataOps articulan una entrega analítica para asignar órdenes según la capacidad real de cada técnico y evitar agendas que razonablemente no podrá cumplir.</p></div>
             <div className="question-card"><span>PREGUNTA ANALÍTICA</span><p>{analyticalQuestion}</p><div className="question-footer"><Route /> WorkOrder → ServiceAppointment → AWS → Oracle SQL → Indicador</div></div>
           </div>
+          <div className="framework-hero-strip">{frameworks.map((item) => <button key={item.id} onClick={() => { setSelectedFramework(item.id); scrollTo('marcos') }}><span>{item.name}</span><strong>{item.tag}</strong><small>{item.question}</small><ArrowRight /></button>)}</div>
           <div className="filter-bar">
             <div><label htmlFor="zone">ZONA</label><div className="select-wrap"><select id="zone" value={zone} onChange={(e) => setZone(e.target.value)}><option>TODAS</option>{operationalData.map((item) => <option key={item.zone}>{item.zone}</option>)}</select><ChevronDown /></div></div>
             <div><label htmlFor="period">PERIODO</label><div className="select-wrap"><select id="period" value={period} onChange={(e) => setPeriod(e.target.value)}><option>Últimas 6 semanas</option><option>Últimos 30 días</option><option>Últimos 90 días</option></select><ChevronDown /></div></div>
@@ -106,33 +116,49 @@ function App() {
           </div>
         </section>
 
+        <section className="section frameworks-section" id="marcos">
+          <SectionHeading number="01" kicker="CONTENIDO CENTRAL DE LA MATERIA" title="Cuatro enfoques, una sola entrega analítica." description="PMBOK 7 gobierna el valor y los riesgos; Scrum organiza los incrementos; CRISP-DM estructura el ciclo analítico; DataOps hace confiable y reproducible el producto de datos." light />
+          <div className="framework-tabs">{frameworks.map((item) => <button key={item.id} className={selectedFramework === item.id ? 'active' : ''} onClick={() => setSelectedFramework(item.id)}><span>{item.progress}%</span><strong>{item.name}</strong><small>{item.tag}</small></button>)}</div>
+          <div className="framework-detail"><div className="framework-main"><span>PREGUNTA QUE RESPONDE</span><h3>{frameworkDetail.question}</h3><div className="progress-line"><i style={{ width: `${frameworkDetail.progress}%` }} /></div><small>Aplicación demostrada: {frameworkDetail.progress}%</small></div><div className="practice-list"><span>PRÁCTICAS APLICADAS</span>{frameworkDetail.practices.map((item) => <div key={item}><CheckCircle2 />{item}</div>)}</div><div className="evidence-box"><FileCheck2 /><div><span>EVIDENCIA</span><p>{frameworkDetail.evidence}</p></div></div></div>
+          <div className="integration-map"><div><strong>PMBOK 7</strong><small>Define valor, alcance, riesgo y aceptación</small></div><ArrowRight /><div><strong>Scrum</strong><small>Prioriza y revisa tres incrementos</small></div><ArrowRight /><div><strong>CRISP-DM</strong><small>Itera negocio, datos y evaluación</small></div><ArrowRight /><div><strong>DataOps</strong><small>Versiona, prueba, observa y reproduce</small></div></div>
+        </section>
+
         <section className="section operation-section" id="operacion">
-          <SectionHeading number="01" kicker="OPERACIÓN SIMULADA" title="Una reparación, dos objetos, seis estados." description="La WorkOrder define el trabajo. La ServiceAppointment organiza cuándo, dónde y quién lo ejecuta. El histórico conserva cada cambio antes de la depuración operativa." />
+          <SectionHeading number="02" kicker="OPERACIÓN Y CAPACIDAD" title="Una orden puede tener varias citas y varios técnicos." description="El modelo separa WorkOrder, ServiceAppointment y AssignedResource para contar correctamente las órdenes, repartir minutos cuando existe trabajo conjunto y evitar sobrecargar la agenda del técnico." />
           <div className="simulator-layout">
             <aside className="order-list">
               <div className="list-title"><div><span>COLA DEL DÍA</span><strong>Órdenes de red externa</strong></div><Search /></div>
               {workOrders.map((order) => {
-                const status = statusOverrides[order.id] ?? order.status
-                return <button key={order.id} className={selectedOrder === order.id ? 'order-item active' : 'order-item'} onClick={() => setSelectedOrder(order.id)}><div><span>{order.id}</span><Status level={order.priority === 'Alta' ? 'critical' : 'watch'} label={order.priority} /></div><strong>{order.repair}</strong><small>{order.zone} · {order.window}</small><div className="mini-progress"><i style={{ width: `${((status + 1) / appointmentStatuses.length) * 100}%` }} /></div><em>{appointmentStatuses[status]}</em></button>
+                const latestAppointment = order.appointments[order.appointments.length - 1]
+                const status = statusOverrides[latestAppointment.id] ?? latestAppointment.status
+                const technicians = new Set(order.appointments.flatMap((appointment) => appointment.technicians.map((technician) => technician.name))).size
+                return <button key={order.id} className={selectedOrder === order.id ? 'order-item active' : 'order-item'} onClick={() => selectOrder(order)}><div><span>{order.id}</span><Status level={order.priority === 'Alta' ? 'critical' : 'watch'} label={order.priority} /></div><strong>{order.repair}</strong><small>{order.zone} · {order.appointments.length} SA · {technicians} técnico{technicians > 1 ? 's' : ''}</small><div className="mini-progress"><i style={{ width: `${((status + 1) / appointmentStatuses.length) * 100}%` }} /></div><em>{appointmentStatuses[status]}</em></button>
               })}
             </aside>
 
             <article className="service-console">
-              <div className="console-top"><div><span className="sf-cloud"><Cloud /></span><div><small>SALESFORCE FIELD SERVICE · SIMULACIÓN</small><h3>{currentOrder.appointment}</h3></div></div><Status level={currentStatus === 5 ? 'stable' : currentStatus >= 3 ? 'progress' : 'watch'} label={appointmentStatuses[currentStatus]} /></div>
+              <div className="console-top"><div><span className="sf-cloud"><Cloud /></span><div><small>{currentOrder.id} · SERVICE APPOINTMENT ACTIVA</small><h3>{currentAppointment.id}</h3></div></div><Status level={currentStatus === 5 ? 'stable' : currentStatus >= 3 ? 'progress' : 'watch'} label={appointmentStatuses[currentStatus]} /></div>
               <div className="object-tabs"><button className={objectTab === 'appointment' ? 'active' : ''} onClick={() => setObjectTab('appointment')}>ServiceAppointment</button><button className={objectTab === 'workorder' ? 'active' : ''} onClick={() => setObjectTab('workorder')}>WorkOrder</button><button className={objectTab === 'oracle' ? 'active' : ''} onClick={() => setObjectTab('oracle')}>Registro Oracle</button></div>
 
               {objectTab === 'appointment' && <div className="appointment-view">
-                <div className="technician-card"><span>{currentOrder.initials}</span><div><small>TÉCNICO ASIGNADO</small><strong>{currentOrder.tech}</strong><p><UserRound /> Recurso móvil · {currentOrder.territory}</p></div><div className="schedule"><small>VENTANA</small><strong>{currentOrder.window}</strong></div></div>
+                <div className="appointment-selector"><span>HISTORIAL DE CITAS DE {currentOrder.id}</span><div>{currentOrder.appointments.map((appointment, index) => <button key={appointment.id} className={currentAppointment.id === appointment.id ? 'active' : ''} onClick={() => setSelectedAppointment(appointment.id)}><strong>{appointment.id}</strong><small>Visita {index + 1} · {appointment.reason}</small><em>{appointment.technicians.length} técnico{appointment.technicians.length > 1 ? 's' : ''}</em></button>)}</div></div>
+                <div className="technician-team"><div className="team-label"><Users /><div><small>RECURSOS ASIGNADOS</small><strong>{currentAppointment.technicians.length === 1 ? 'Trabajo individual' : 'Cuadrilla de trabajo'}</strong></div><span>{currentAppointment.window}</span></div><div className="team-members">{currentAppointment.technicians.map((technician) => <div className="technician-card" key={technician.name}><span>{technician.initials}</span><div><small>{technician.role}</small><strong>{technician.name}</strong><p><UserRound /> Recurso móvil · {currentOrder.territory}</p></div></div>)}</div></div>
                 <div className="status-track">{appointmentStatuses.map((status, index) => <div className={`${index < currentStatus ? 'done' : ''} ${index === currentStatus ? 'current' : ''}`} key={status}><span>{index < currentStatus ? <Check /> : index + 1}</span><strong>{status}</strong><small>{index <= currentStatus ? ['07:42', '07:55', '08:21', '08:48', '09:36', '—'][index] : 'Pendiente'}</small></div>)}</div>
-                <div className="field-grid"><Field label="UBICACIÓN" value={currentOrder.address} /><Field label="PRIORIDAD" value={currentOrder.priority} /><Field label="DURACIÓN REFERENCIA" value={`${currentOrder.duration} minutos`} /><Field label="ÚLTIMA ACTUALIZACIÓN" value={currentOrder.lastUpdate} /></div>
+                <div className="field-grid"><Field label="UBICACIÓN" value={currentOrder.address} /><Field label="MOTIVO DE CITA" value={currentAppointment.reason} /><Field label="DURACIÓN REFERENCIA" value={`${currentOrder.duration} minutos`} /><Field label="ÚLTIMA ACTUALIZACIÓN" value={currentOrder.lastUpdate} /></div>
                 <button className="advance-button" onClick={advanceAppointment} disabled={currentStatus === 5}><Play />{currentStatus === 5 ? 'Cita completada' : `Mover a “${appointmentStatuses[currentStatus + 1]}”`}</button>
               </div>}
 
-              {objectTab === 'workorder' && <div className="record-view"><div className="record-hero"><div><small>ORDEN DE TRABAJO</small><h3>{currentOrder.id}</h3><p>{currentOrder.account}</p></div><Box /></div><div className="field-grid"><Field label="TIPO DE TRABAJO" value="Reparación red externa" /><Field label="TIPO DE DAÑO" value={currentOrder.repair} /><Field label="TERRITORIO" value={currentOrder.territory} /><Field label="CITA RELACIONADA" value={currentOrder.appointment} /><Field label="CREADA" value={currentOrder.created} /><Field label="ESTADO DERIVADO" value={appointmentStatuses[currentStatus]} /></div><div className="relation-note"><Network /> Relación 1:N: una WorkOrder puede originar una o más ServiceAppointments por reprogramación.</div></div>}
+              {objectTab === 'workorder' && <div className="record-view"><div className="record-hero"><div><small>ORDEN DE TRABAJO</small><h3>{currentOrder.id}</h3><p>{currentOrder.account}</p></div><Box /></div><div className="field-grid"><Field label="TIPO DE TRABAJO" value="Reparación red externa" /><Field label="TIPO DE DAÑO" value={currentOrder.repair} /><Field label="TERRITORIO" value={currentOrder.territory} /><Field label="CITAS RELACIONADAS" value={`${currentOrder.appointments.length} ServiceAppointments`} /><Field label="TÉCNICOS INVOLUCRADOS" value={`${orderTechnicians.length} recursos distintos`} /><Field label="CREADA" value={currentOrder.created} /></div><div className="relationship-graph"><div><Box /><strong>{currentOrder.id}</strong><small>WorkOrder · contar 1 vez</small></div><ArrowRight /><div className="sa-stack">{currentOrder.appointments.map((appointment) => <span key={appointment.id}><CalendarDays /> <strong>{appointment.id}</strong><small>{appointment.reason}</small></span>)}</div><ArrowRight /><div className="tech-stack">{orderTechnicians.map((technician) => <span key={technician.name}>{technician.initials}<small>{technician.name}</small></span>)}</div></div><div className="relation-note"><Network /> Cardinalidad real: WorkOrder 1:N ServiceAppointment y ServiceAppointment N:M Technician mediante AssignedResource. La WorkOrder se cuenta una vez; la carga se imputa por técnico sin duplicarla.</div></div>}
 
-              {objectTab === 'oracle' && <div className="sql-record"><div className="sql-head"><div><Database /><span>HIST_FFS_CAPACIDAD</span></div><em>MERGE · batch_20260812_0600</em></div><code>{`MERGE INTO HIST_FFS_CAPACIDAD h\nUSING STG_FFS_APPOINTMENT s\nON (h.SERVICE_APPOINTMENT_ID = '${currentOrder.appointment}')\nWHEN MATCHED THEN UPDATE SET\n  h.STATUS_CODE = '${appointmentStatuses[currentStatus].toUpperCase().replace(' ', '_')}',\n  h.TECHNICIAN_ID = 'TECH_${currentOrder.initials}',\n  h.ZONE_CODE = '${currentOrder.zone}',\n  h.ROW_HASH = 'a84f…91c2'\nWHEN NOT MATCHED THEN INSERT (…);`}</code><div className="sql-success"><CheckCircle2 /> Registro historizado y trazable hasta Salesforce · dato demostrativo</div></div>}
+              {objectTab === 'oracle' && <div className="sql-record"><div className="sql-head"><div><Database /><span>BRIDGE_SA_TECHNICIAN</span></div><em>MERGE · batch_20260812_0600</em></div><code>{`-- Una fila por técnico asignado, no una fila por WorkOrder\nMERGE INTO BRIDGE_SA_TECHNICIAN b\nUSING STG_ASSIGNED_RESOURCE s\nON (b.SERVICE_APPOINTMENT_ID = '${currentAppointment.id}'\n    AND b.TECHNICIAN_ID = 'TECH_${currentTechnician.initials}')\nWHEN MATCHED THEN UPDATE SET\n  b.ASSIGNMENT_ROLE = '${currentTechnician.role.toUpperCase()}',\n  b.PLANNED_MINUTES_SHARE = ${Math.round(currentOrder.duration / currentAppointment.technicians.length)}\nWHEN NOT MATCHED THEN INSERT (…);\n\n-- ${currentOrder.id}: ${currentOrder.appointments.length} citas / ${orderTechnicians.length} técnicos distintos`}</code><div className="sql-success"><CheckCircle2 /> La tabla puente conserva la relación N:M y evita duplicar minutos · dato demostrativo</div></div>}
             </article>
           </div>
+
+          <div className="capacity-planner">
+            <div className="capacity-intro"><span className="mini-kicker">OBJETIVO OPERATIVO</span><h3>Asignar trabajo que sí cabe en la jornada.</h3><p>No basta con contar órdenes. Antes de asignar una nueva WorkOrder se comparan los minutos disponibles netos del técnico con la carga ya comprometida, el desplazamiento y la duración de referencia del nuevo trabajo.</p><div className="capacity-formula"><span>Capacidad restante</span><strong>= disponibles − comprometidos − desplazamiento − nueva orden</strong></div></div>
+            <div className="capacity-table-wrap"><div className="capacity-table-head"><div><strong>Simulador de asignación</strong><small>Nueva orden propuesta incluida · datos demostrativos</small></div><span>La decisión final sigue siendo operativa</span></div><div className="capacity-rows">{technicianCapacity.map((technician) => { const projected = technician.committed + technician.travel + technician.proposed; const utilization = Math.round(projected / technician.available * 100); return <div className="capacity-row" key={technician.name}><div className="capacity-person"><span>{technician.initials}</span><div><strong>{technician.name}</strong><small>{technician.zone} · {technician.assignedOrders} WO distintas</small></div></div><div><small>DISPONIBLE</small><strong>{technician.available} min</strong></div><div><small>YA COMPROMETIDO</small><strong>{technician.committed + technician.travel} min</strong></div><div><small>NUEVA WO</small><strong>+{technician.proposed} min</strong></div><div className="capacity-meter"><span><i style={{ width: `${Math.min(utilization, 100)}%` }} className={utilization > 100 ? 'over' : ''} /></span><strong>{utilization}%</strong></div><Status level={technician.result === 'Asignable' ? 'stable' : 'critical'} label={technician.result} /><small className="capacity-reason">{technician.reason}</small></div> })}</div></div>
+          </div>
+          <div className="counting-rules"><article><strong>1 WorkOrder</strong><p>Se cuenta una sola vez aunque tenga varias citas o reprogramaciones.</p></article><article><strong>N ServiceAppointments</strong><p>Cada visita se conserva para medir ejecución, reprogramación y estado.</p></article><article><strong>N técnicos por cita</strong><p>La tabla puente conserva la cuadrilla y reparte minutos para evitar doble conteo.</p></article></div>
 
           <div className="diagnostic-grid">
             <article className="panel"><PanelHeader title="Carga frente a capacidad" subtitle="Minutos por zona" badge="BRECHA" /><div className="chart-area"><ResponsiveContainer width="100%" height="100%"><BarChart data={filtered} barGap={7} margin={{ top: 10, right: 8, left: -8, bottom: 0 }}><CartesianGrid vertical={false} stroke="#e9e4dc" /><XAxis dataKey="zone" axisLine={false} tickLine={false} tick={{ fill: '#645f58', fontSize: 11, fontWeight: 700 }} /><YAxis axisLine={false} tickLine={false} tick={{ fill: '#8a847c', fontSize: 11 }} tickFormatter={(v) => `${Math.round(v / 1000)}k`} /><Tooltip content={<ChartTooltip />} /><Bar dataKey="capacity" name="Capacidad" fill="#d9d3ca" radius={[4, 4, 0, 0]} /><Bar dataKey="load" name="Carga" radius={[4, 4, 0, 0]}>{filtered.map((item) => <Cell key={item.zone} fill={item.load > item.capacity ? '#e56e44' : '#32a58b'} />)}</Bar></BarChart></ResponsiveContainer></div></article>
@@ -141,26 +167,19 @@ function App() {
         </section>
 
         <section className="section architecture-section" id="arquitectura">
-          <SectionHeading number="02" kicker="ARQUITECTURA DE DATOS PROPUESTA" title="De Salesforce a Oracle, con control en cada salto." description="AWS desacopla la extracción, preserva el dato crudo y permite validar antes de cargar el histórico corporativo. Haz clic en cada servicio para revisar su función." light />
+          <SectionHeading number="03" kicker="ARQUITECTURA DE DATOS PROPUESTA" title="De Salesforce a Oracle, con control en cada salto." description="AWS desacopla la extracción, preserva el dato crudo y permite validar antes de cargar el histórico corporativo. Haz clic en cada servicio para revisar su función." light />
           <div className="pipeline-toolbar"><div><span>SIMULACIÓN DE EJECUCIÓN</span><strong>{pipelineStep < 0 ? 'Lista para iniciar' : pipelineStep === pipeline.length - 1 ? 'Carga finalizada · 639 filas' : `Procesando ${pipeline[pipelineStep].name}`}</strong></div><button onClick={runPipeline} disabled={pipelineRunning}><Play /> {pipelineRunning ? 'Ejecutando…' : 'Ejecutar pipeline'}</button></div>
           <div className="pipeline-map">{pipeline.map((item, index) => <div className="pipeline-wrap" key={item.id}><button className={`pipeline-node ${selectedPipeline === item.id ? 'selected' : ''} ${pipelineStep >= index ? 'complete' : ''} ${pipelineStep === index && pipelineRunning ? 'running' : ''}`} onClick={() => setSelectedPipeline(item.id)}><span>{index + 1}</span><PipelineIcon id={item.id} /><strong>{item.name}</strong><small>{item.service}</small>{pipelineStep >= index && <CheckCircle2 className="node-check" />}</button>{index < pipeline.length - 1 && <div className={pipelineStep > index ? 'connector complete' : 'connector'}><i /></div>}</div>)}</div>
           <div className="pipeline-detail"><div><span>ETAPA SELECCIONADA</span><h3>{pipelineDetail.name}</h3><p>{pipelineDetail.detail}</p></div><div><span>CONTROL DE GOBIERNO</span><strong><ShieldCheck /> {pipelineDetail.control}</strong></div></div>
 
-          <div className="oracle-section"><div className="oracle-copy"><span className="mini-kicker">MODELO DEL HISTÓRICO</span><h3>Oracle conserva lo que Salesforce depura.</h3><p>La tabla propuesta mantiene una fila vigente por cita y atributos de auditoría para detectar cambios. La zona de S3 conserva el extracto inmutable; Oracle soporta el consumo corporativo y las vistas certificadas.</p><div className="oracle-metrics"><div><strong>90 días</strong><small>retención fuente</small></div><div><strong>Daily</strong><small>extracción incremental</small></div><div><strong>SCD / MERGE</strong><small>estrategia histórica</small></div></div></div><div className="oracle-table"><div className="oracle-title"><Table2 /><div><strong>HIST_FFS_CAPACIDAD</strong><small>ORACLE SQL · ESQUEMA ANALYTICS</small></div><span>12 CAMPOS CLAVE</span></div><div className="schema-rows">{oracleColumns.map(([name, type, detail], index) => <div key={name}><span>{index < 2 ? <KeyRound /> : <Code2 />}</span><strong>{name}</strong><code>{type}</code><small>{detail}</small></div>)}</div></div></div>
+          <div className="oracle-section"><div className="oracle-copy"><span className="mini-kicker">MODELO RELACIONAL DEL HISTÓRICO</span><h3>Oracle conserva cardinalidad, no una tabla plana ambigua.</h3><p>Separar orden, cita, asignación y técnico-día permite representar múltiples visitas y cuadrillas sin inflar el conteo de órdenes ni duplicar la carga. S3 conserva el extracto inmutable y Oracle soporta las vistas certificadas.</p><div className="oracle-metrics"><div><strong>1:N</strong><small>WorkOrder → citas</small></div><div><strong>N:M</strong><small>citas ↔ técnicos</small></div><div><strong>1 fila</strong><small>técnico · día · zona</small></div></div><div className="oracle-model-list">{oracleTables.map((table) => <div key={table.name}><Database /><div><strong>{table.name}</strong><small>{table.grain}</small><code>{table.key}</code></div></div>)}</div></div><div className="oracle-table"><div className="oracle-title"><Table2 /><div><strong>BRIDGE_SA_TECHNICIAN</strong><small>TABLA PUENTE · ESQUEMA ANALYTICS</small></div><span>{oracleColumns.length} CAMPOS CLAVE</span></div><div className="schema-rows">{oracleColumns.map(([name, type, detail], index) => <div key={name}><span>{index < 3 ? <KeyRound /> : <Code2 />}</span><strong>{name}</strong><code>{type}</code><small>{detail}</small></div>)}</div></div></div>
         </section>
 
         <section className="section governance-section" id="gobernanza">
-          <SectionHeading number="03" kicker="GOBERNANZA DEL DATO" title="Confiar exige dueño, regla y evidencia." description="La gobernanza define quién decide, qué condición debe cumplirse y cómo se demuestra. Selecciona un dominio para revisar el control propuesto." />
+          <SectionHeading number="04" kicker="GOBERNANZA DEL DATO" title="Confiar exige dueño, regla y evidencia." description="La gobernanza define quién decide, qué condición debe cumplirse y cómo se demuestra. Selecciona un dominio para revisar el control propuesto." />
           <div className="governance-layout"><div className="governance-wheel">{governanceDomains.map((item) => <button key={item.id} className={selectedGovernance === item.id ? 'active' : ''} onClick={() => setSelectedGovernance(item.id)}><div className="score-ring" style={{ '--score': `${item.score * 3.6}deg` }}><span>{item.score}</span></div><div><strong>{item.title}</strong><small>{item.owner}</small></div><ChevronRight /></button>)}</div><article className="governance-detail"><span>DOMINIO ACTIVO</span><h3>{governanceDetail.title}</h3><div className="owner"><UserRound /><div><small>RESPONSABLE</small><strong>{governanceDetail.owner}</strong></div></div><div className="governance-rule"><small>REGLA</small><p>{governanceDetail.rule}</p></div><div className="governance-evidence"><FileCheck2 /><div><small>EVIDENCIA DE CONTROL</small><p>{governanceDetail.evidence}</p></div></div></article></div>
           <div className="raci-strip"><div><span>DATA OWNER</span><strong>Dirección de Operaciones</strong><small>Aprueba uso y definición</small></div><ArrowRight /><div><span>DATA STEWARD</span><strong>Planeación Operativa</strong><small>Controla calidad y glosario</small></div><ArrowRight /><div><span>DATA CUSTODIAN</span><strong>TI / Ingeniería de Datos</strong><small>Protege y opera la plataforma</small></div><ArrowRight /><div><span>DATA CONSUMER</span><strong>Despacho y Supervisión</strong><small>Decide con el producto</small></div></div>
           <div className="control-cards"><ControlCard icon={<LockKeyhole />} title="Privacidad por diseño" text="No se expone información del cliente; el técnico se seudonimiza en la capa analítica." /><ControlCard icon={<TimerReset />} title="Frescura controlada" text="CloudWatch alerta si el último lote supera 26 horas o si disminuye el volumen esperado." /><ControlCard icon={<GitBranch />} title="Linaje reproducible" text="batch_id, EXTRACTED_AT y ROW_HASH conectan indicador, Oracle, S3 y objeto fuente." /><ControlCard icon={<XCircle />} title="Cuarentena" text="Los registros que incumplen reglas no llegan a la vista certificada; se corrigen con evidencia." /></div>
-        </section>
-
-        <section className="section frameworks-section" id="marcos">
-          <SectionHeading number="04" kicker="MARCOS Y ENFOQUES" title="Cada marco responde una pregunta distinta." description="No se mezclan como una receta única: PMBOK gobierna, Scrum organiza la entrega, CRISP-DM guía el trabajo analítico y DataOps opera el producto de datos." light />
-          <div className="framework-tabs">{frameworks.map((item) => <button key={item.id} className={selectedFramework === item.id ? 'active' : ''} onClick={() => setSelectedFramework(item.id)}><span>{item.progress}%</span><strong>{item.name}</strong><small>{item.tag}</small></button>)}</div>
-          <div className="framework-detail"><div className="framework-main"><span>PREGUNTA QUE RESPONDE</span><h3>{frameworkDetail.question}</h3><div className="progress-line"><i style={{ width: `${frameworkDetail.progress}%` }} /></div><small>Aplicación demostrada: {frameworkDetail.progress}%</small></div><div className="practice-list"><span>PRÁCTICAS APLICADAS</span>{frameworkDetail.practices.map((item) => <div key={item}><CheckCircle2 />{item}</div>)}</div><div className="evidence-box"><FileCheck2 /><div><span>EVIDENCIA</span><p>{frameworkDetail.evidence}</p></div></div></div>
-          <div className="integration-map"><div><strong>PMBOK 7</strong><small>Define valor, riesgo y aceptación</small></div><ArrowRight /><div><strong>Scrum</strong><small>Prioriza y revisa incrementos</small></div><ArrowRight /><div><strong>CRISP-DM</strong><small>Itera negocio, datos y evaluación</small></div><ArrowRight /><div><strong>DataOps</strong><small>Automatiza, observa y reproduce</small></div></div>
         </section>
 
         <section className="section progress-section" id="avance">

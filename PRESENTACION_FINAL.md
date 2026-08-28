@@ -56,13 +56,13 @@ Esto produce cuatro riesgos:
 
 ### Pregunta analítica
 
-> ¿Cómo se distribuyen diariamente la carga asignada, la capacidad disponible y la ejecución de los técnicos de red externa, y en qué tipos de reparación, zonas y periodos se presentan brechas que requieran ajustar la asignación o la agenda?
+> ¿Cómo distribuir las órdenes entre los técnicos según su capacidad disponible, carga comprometida, desplazamiento y tipo de reparación, para evitar sobreasignar trabajo que razonablemente no podrán cumplir y localizar brechas por zona y periodo?
 
 ### Alcance
 
 - Zonas: COSTA, ORIENTE, SUR, BOGOTÁ y ANDINA.
 - Universo: reparaciones de red externa.
-- Unidad principal: orden finalizada o cancelada relacionada con su cita de servicio.
+- Unidades relacionadas: WorkOrder, ServiceAppointment y asignación cita–técnico, respetando la granularidad de cada una.
 - Resultado: histórico, reglas de calidad, indicadores y tablero.
 - Fuera de alcance: modelos predictivos, optimización automática y evaluación individual.
 
@@ -83,14 +83,14 @@ La `WorkOrder` representa el trabajo que debe realizarse. En el ejemplo contiene
 - Cuenta o cliente seudonimizado.
 - Territorio de servicio.
 - Prioridad.
-- Relación con una cita.
+- Relación con una o varias citas.
 
 ### ServiceAppointment
 
 La `ServiceAppointment` representa la ejecución programada del trabajo. Contiene:
 
 - Ventana de atención.
-- Técnico o recurso asignado.
+- Uno o varios técnicos o recursos asignados.
 - Territorio.
 - Estado operativo.
 - Fechas programadas y reales.
@@ -108,11 +108,18 @@ Durante el video, utilizar el botón para mover la cita al siguiente estado.
 
 ### Relación entre objetos
 
-Una WorkOrder puede relacionarse con más de una ServiceAppointment cuando existe reprogramación o una nueva visita. Por esta razón, no se deben sumar órdenes y citas como si fueran la misma entidad.
+Una WorkOrder puede relacionarse con más de una ServiceAppointment cuando existe diagnóstico, reprogramación o una nueva visita. A su vez, una ServiceAppointment puede ser trabajada por varios técnicos mediante `AssignedResource`.
+
+```text
+WorkOrder 1:N ServiceAppointment
+ServiceAppointment N:M Technician
+```
+
+Por esta razón, la WorkOrder se cuenta una vez, las citas se cuentan de forma distinta y la carga compartida se imputa con una regla documentada para no duplicar minutos.
 
 ### Frase recomendada
 
-> La orden explica qué trabajo existe; la cita explica cuándo, dónde y quién intenta ejecutarlo. La capacidad se analiza principalmente a nivel técnico–día, pero debe conservarse la relación con la orden original.
+> La orden explica qué trabajo existe; cada cita explica una visita; y AssignedResource identifica quién participa. La capacidad se analiza a nivel técnico–día sin duplicar la orden ni cargar la duración completa a todos los integrantes de la cuadrilla.
 
 ---
 
@@ -135,7 +142,7 @@ AWS Glue — catálogo, calidad y transformación
         ↓
 Amazon Athena — perfilado y conciliación
         ↓
-Oracle Database — HIST_FFS_CAPACIDAD
+Oracle Database — históricos, puente cita–técnico y hecho técnico–día
         ↓
 Vista semántica y tablero
 ```
@@ -206,28 +213,14 @@ Athena no reemplaza necesariamente el histórico corporativo. En esta propuesta 
 
 ### 5.6 Oracle Database
 
-Oracle conserva la tabla corporativa:
+Oracle conserva cuatro estructuras con granularidades distintas:
 
-```sql
-HIST_FFS_CAPACIDAD
-```
+- `HIST_WORK_ORDER`: una fila por versión de orden.
+- `HIST_SERVICE_APPOINTMENT`: una fila por versión de cita.
+- `BRIDGE_SA_TECHNICIAN`: una fila por técnico asignado a cada cita.
+- `FACT_TECHNICIAN_DAY`: una fila por técnico, fecha y zona.
 
-Campos relevantes:
-
-- `WORK_ORDER_ID`
-- `SERVICE_APPOINTMENT_ID`
-- `TECHNICIAN_ID`
-- `ZONE_CODE`
-- `STATUS_CODE`
-- `REPAIR_TYPE`
-- `SCHED_START_TS`
-- `ACTUAL_END_TS`
-- `AVAILABLE_MINUTES`
-- `PLANNED_MINUTES`
-- `EXTRACTED_AT`
-- `ROW_HASH`
-
-La carga se realiza mediante una operación `MERGE`. `ROW_HASH` permite detectar cambios y `EXTRACTED_AT` conserva el momento de extracción.
+La tabla puente resuelve la relación N:M entre citas y técnicos. La carga se realiza mediante operaciones `MERGE`; la clave de negocio y la fecha efectiva evitan duplicados, mientras `EXTRACTED_AT` y el identificador de lote conservan el linaje.
 
 ### Aclaración técnica importante
 
@@ -379,6 +372,8 @@ Los registros que incumplen una regla crítica no se eliminan ni llegan a la vis
 
 ## 8. Marcos y enfoques — 1 minuto y 30 segundos
 
+> En la interfaz esta sección aparece inmediatamente después del panorama porque PMBOK 7, Scrum, CRISP-DM y DataOps son el contenido central de la materia.
+
 ### Qué mostrar
 
 Ir a **Marcos** y seleccionar las cuatro opciones.
@@ -513,9 +508,11 @@ Un incremento solamente se considera terminado cuando:
 - [ ] Cerrar pestañas y notificaciones personales.
 - [ ] Mostrar que los datos son demostrativos.
 - [ ] Cambiar al menos una zona del tablero.
-- [ ] Seleccionar una WorkOrder diferente.
+- [ ] Seleccionar una WorkOrder con más de una ServiceAppointment.
+- [ ] Mostrar una ServiceAppointment trabajada por varios técnicos.
 - [ ] Avanzar una ServiceAppointment por sus estados.
-- [ ] Mostrar el registro Oracle y el `MERGE` simulado.
+- [ ] Explicar el simulador de capacidad y una alerta de sobrecarga.
+- [ ] Mostrar la tabla puente Oracle y el `MERGE` simulado.
 - [ ] Ejecutar el pipeline AWS.
 - [ ] Seleccionar al menos dos dominios de gobernanza.
 - [ ] Explicar los cuatro marcos sin tratarlos como sinónimos.
