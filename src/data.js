@@ -19,10 +19,32 @@ export const weekly = ['Sem 1', 'Sem 2', 'Sem 3', 'Sem 4', 'Sem 5', 'Sem 6']
 export const appointmentStatuses = ['Creada', 'Programada', 'Despachada', 'En ruta', 'En sitio', 'Completada']
 
 export const workOrders = [
-  { id: 'WO-00094821', appointment: 'SA-00178432', tech: 'Andrés Molina', initials: 'AM', zone: 'SUR', repair: 'Fibra cortada', account: 'Cliente TELCO •••4821', window: '08:00–10:00', duration: 128, status: 4, priority: 'Alta', territory: 'Cali Sur', address: 'Sector La Buitrera', created: '2026-08-11 16:42', lastUpdate: '2026-08-12 09:36' },
-  { id: 'WO-00094857', appointment: 'SA-00178481', tech: 'Laura Rojas', initials: 'LR', zone: 'BOGOTÁ', repair: 'Acometida externa', account: 'Cliente TELCO •••7350', window: '09:00–11:00', duration: 76, status: 3, priority: 'Media', territory: 'Bogotá Norte', address: 'Sector Suba', created: '2026-08-11 18:20', lastUpdate: '2026-08-12 09:18' },
-  { id: 'WO-00094902', appointment: 'SA-00178511', tech: 'Camilo Torres', initials: 'CT', zone: 'COSTA', repair: 'Caja / empalme', account: 'Cliente TELCO •••0926', window: '10:00–12:00', duration: 102, status: 2, priority: 'Alta', territory: 'Barranquilla Centro', address: 'Sector Boston', created: '2026-08-12 06:04', lastUpdate: '2026-08-12 08:56' },
-  { id: 'WO-00094935', appointment: 'SA-00178542', tech: 'Diana Méndez', initials: 'DM', zone: 'ANDINA', repair: 'Señal degradada', account: 'Cliente TELCO •••3158', window: '11:00–13:00', duration: 68, status: 1, priority: 'Media', territory: 'Medellín Oriente', address: 'Sector Buenos Aires', created: '2026-08-12 07:12', lastUpdate: '2026-08-12 08:40' },
+  {
+    id: 'WO-00094821', zone: 'SUR', repair: 'Fibra cortada', account: 'Cliente TELCO •••4821', duration: 128, priority: 'Alta', territory: 'Cali Sur', address: 'Sector La Buitrera', created: '2026-08-11 16:42', lastUpdate: '2026-08-12 09:36',
+    appointments: [
+      { id: 'SA-00178390', window: '11 ago · 14:00–16:00', status: 5, reason: 'Diagnóstico y escalamiento', technicians: [{ name: 'Paola Gómez', initials: 'PG', role: 'Diagnóstico' }] },
+      { id: 'SA-00178432', window: '12 ago · 08:00–10:00', status: 4, reason: 'Reparación conjunta de fibra', technicians: [{ name: 'Andrés Molina', initials: 'AM', role: 'Técnico principal' }, { name: 'Julián Castro', initials: 'JC', role: 'Apoyo de empalme' }] },
+    ],
+  },
+  {
+    id: 'WO-00094857', zone: 'BOGOTÁ', repair: 'Acometida externa', account: 'Cliente TELCO •••7350', duration: 76, priority: 'Media', territory: 'Bogotá Norte', address: 'Sector Suba', created: '2026-08-11 18:20', lastUpdate: '2026-08-12 09:18',
+    appointments: [{ id: 'SA-00178481', window: '12 ago · 09:00–11:00', status: 3, reason: 'Visita inicial', technicians: [{ name: 'Laura Rojas', initials: 'LR', role: 'Técnica principal' }] }],
+  },
+  {
+    id: 'WO-00094902', zone: 'COSTA', repair: 'Caja / empalme', account: 'Cliente TELCO •••0926', duration: 102, priority: 'Alta', territory: 'Barranquilla Centro', address: 'Sector Boston', created: '2026-08-12 06:04', lastUpdate: '2026-08-12 08:56',
+    appointments: [{ id: 'SA-00178511', window: '12 ago · 10:00–12:00', status: 2, reason: 'Visita inicial', technicians: [{ name: 'Camilo Torres', initials: 'CT', role: 'Técnico principal' }, { name: 'Sara León', initials: 'SL', role: 'Seguridad en altura' }] }],
+  },
+  {
+    id: 'WO-00094935', zone: 'ANDINA', repair: 'Señal degradada', account: 'Cliente TELCO •••3158', duration: 68, priority: 'Media', territory: 'Medellín Oriente', address: 'Sector Buenos Aires', created: '2026-08-12 07:12', lastUpdate: '2026-08-12 08:40',
+    appointments: [{ id: 'SA-00178542', window: '12 ago · 11:00–13:00', status: 1, reason: 'Visita inicial', technicians: [{ name: 'Diana Méndez', initials: 'DM', role: 'Técnica principal' }] }],
+  },
+]
+
+export const technicianCapacity = [
+  { name: 'Andrés Molina', initials: 'AM', zone: 'SUR', available: 420, committed: 286, travel: 42, proposed: 128, assignedOrders: 3, result: 'Sobrecarga', reason: '36 min por encima de capacidad' },
+  { name: 'Julián Castro', initials: 'JC', zone: 'SUR', available: 420, committed: 198, travel: 35, proposed: 128, assignedOrders: 2, result: 'Asignable', reason: '59 min de reserva posterior' },
+  { name: 'Laura Rojas', initials: 'LR', zone: 'BOGOTÁ', available: 450, committed: 274, travel: 31, proposed: 76, assignedOrders: 4, result: 'Asignable', reason: '69 min de reserva posterior' },
+  { name: 'Camilo Torres', initials: 'CT', zone: 'COSTA', available: 390, committed: 252, travel: 54, proposed: 102, assignedOrders: 3, result: 'Sobrecarga', reason: '18 min por encima de capacidad' },
 ]
 
 export const pipeline = [
@@ -31,23 +53,26 @@ export const pipeline = [
   { id: 'landing', name: 'Amazon S3', service: 'Zona RAW / CURATED', detail: 'Conserva el extracto inmutable en Parquet, particionado por fecha de corte, objeto y zona.', control: 'SSE-KMS · versionado · lifecycle · bloqueo' },
   { id: 'catalog', name: 'AWS Glue', service: 'Catálogo y transformación', detail: 'Cataloga esquemas, estandariza estados y fechas, aplica reglas y prepara el conjunto analítico.', control: 'Schema Registry · jobs versionados · DQ rules' },
   { id: 'athena', name: 'Amazon Athena', service: 'Consulta y conciliación', detail: 'Consulta S3 sin servidor para perfilar datos, reconciliar conteos y validar duplicados, nulos e integridad.', control: 'Workgroups · límite de escaneo · resultados cifrados' },
-  { id: 'oracle', name: 'Oracle Database', service: 'Histórico corporativo', detail: 'Glue carga por JDBC la tabla HIST_FFS_CAPACIDAD. MERGE conserva cambios por clave y fecha efectiva.', control: 'PK compuesta · auditoría · particiones · roles' },
+  { id: 'oracle', name: 'Oracle Database', service: 'Histórico corporativo', detail: 'Glue carga por JDBC las tablas de WorkOrder, ServiceAppointment, asignación cita–técnico y técnico–día. MERGE conserva cambios por clave y fecha efectiva.', control: 'PK compuestas · integridad referencial · auditoría · roles' },
   { id: 'dashboard', name: 'Producto analítico', service: 'Capa de consumo', detail: 'Vista semántica y tablero descriptivo-diagnóstico con filtros, trazabilidad y fecha de actualización.', control: 'RLS por zona · glosario · certificación de KPIs' },
 ]
 
+export const oracleTables = [
+  { name: 'HIST_WORK_ORDER', grain: '1 fila por versión de WorkOrder', key: 'WORK_ORDER_ID + VALID_FROM', relation: 'Orden padre' },
+  { name: 'HIST_SERVICE_APPOINTMENT', grain: '1 fila por versión de ServiceAppointment', key: 'SERVICE_APPOINTMENT_ID + VALID_FROM', relation: 'N citas por WorkOrder' },
+  { name: 'BRIDGE_SA_TECHNICIAN', grain: '1 fila por técnico asignado a cada cita', key: 'SA_ID + TECHNICIAN_ID + ASSIGNED_FROM', relation: 'N técnicos por cita' },
+  { name: 'FACT_TECHNICIAN_DAY', grain: '1 fila por técnico, fecha y zona', key: 'TECHNICIAN_ID + WORK_DATE', relation: 'Carga y capacidad sin doble conteo' },
+]
+
 export const oracleColumns = [
-  ['WORK_ORDER_ID', 'VARCHAR2(18)', 'PK de WorkOrder'],
-  ['SERVICE_APPOINTMENT_ID', 'VARCHAR2(18)', 'Cita relacionada'],
-  ['TECHNICIAN_ID', 'VARCHAR2(18)', 'Recurso asignado seudonimizado'],
-  ['ZONE_CODE', 'VARCHAR2(20)', 'Zona operativa normalizada'],
-  ['STATUS_CODE', 'VARCHAR2(30)', 'Estado homologado'],
-  ['REPAIR_TYPE', 'VARCHAR2(80)', 'Tipo de reparación externa'],
-  ['SCHED_START_TS', 'TIMESTAMP TZ', 'Inicio programado UTC'],
-  ['ACTUAL_END_TS', 'TIMESTAMP TZ', 'Fin real UTC'],
-  ['AVAILABLE_MINUTES', 'NUMBER(6)', 'Capacidad neta técnico-día'],
-  ['PLANNED_MINUTES', 'NUMBER(6)', 'Servicio + desplazamiento'],
+  ['WORK_ORDER_ID', 'VARCHAR2(18)', 'FK a orden padre'],
+  ['SERVICE_APPOINTMENT_ID', 'VARCHAR2(18)', 'FK a cita'],
+  ['TECHNICIAN_ID', 'VARCHAR2(18)', 'FK a recurso asignado'],
+  ['ASSIGNMENT_ROLE', 'VARCHAR2(30)', 'Principal o apoyo'],
+  ['ASSIGNED_FROM', 'TIMESTAMP TZ', 'Inicio de asignación'],
+  ['ASSIGNED_TO', 'TIMESTAMP TZ', 'Fin de asignación'],
+  ['PLANNED_MINUTES_SHARE', 'NUMBER(6)', 'Minutos imputados sin duplicar'],
   ['EXTRACTED_AT', 'TIMESTAMP TZ', 'Fecha de linaje'],
-  ['ROW_HASH', 'VARCHAR2(64)', 'Detección de cambios'],
 ]
 
 export const governanceDomains = [
@@ -75,4 +100,4 @@ export const projectStages = [
   { name: 'Transferencia', progress: 15, evidence: 'Guía y presentación en construcción', state: 'Pendiente' },
 ]
 
-export const analyticalQuestion = '¿Cómo se distribuyen diariamente la carga asignada, la capacidad disponible y la ejecución de los técnicos de red externa, y en qué tipos de reparación, zonas y periodos se presentan brechas que requieran ajustar la asignación o la agenda?'
+export const analyticalQuestion = '¿Cómo distribuir las órdenes entre los técnicos según su capacidad disponible, carga comprometida, desplazamiento y tipo de reparación, para evitar sobreasignar trabajo que razonablemente no podrán cumplir y localizar brechas por zona y periodo?'
